@@ -10,8 +10,7 @@ from dotenv import load_dotenv
 
 # Optional: Gemini
 GEMINI_AVAILABLE = False
-try:
-    import google.generativeai as genai  # pip install google-generativeai
+import google.generativeai as genai
     GEMINI_AVAILABLE = True
 except Exception:
     GEMINI_AVAILABLE = False
@@ -20,7 +19,6 @@ from controller.planner import Planner
 from utils.airports import normalize_to_iata
 from utils.logging_config import setup_logging
 
-# --- Env & logging ---
 load_dotenv(dotenv_path=os.path.join(os.getcwd(), ".env"), override=True)
 setup_logging()
 
@@ -62,7 +60,6 @@ def format_date_auto(d: date, country_hint: Optional[str]) -> str:
             if _country_default_fmt(country_hint) == "MM/DD/YYYY"
             else f"{d.day:02d}/{d.month:02d}/{d.year}")
 
-# ---------- Markdown builders ----------
 def md_flights(it: dict) -> str:
     flights = it.get("flights") or []
     if not flights: return "_No flights found for those dates/route._"
@@ -134,7 +131,6 @@ def md_overview(it: dict, start_date: date, end_date: date, budget_per_night: fl
     ]
     return "\n".join(lines)
 
-# ---------- Gemini ----------
 def _gemini_enabled() -> bool:
     return GEMINI_AVAILABLE and bool(os.getenv("GOOGLE_API_KEY"))
 
@@ -160,7 +156,7 @@ def _gemini_narrative(itinerary_obj: dict, country_hint: Optional[str]) -> str:
     except Exception:
         return ""
 
-# ---------- Core ----------
+
 def plan(origin: str, destination: str, country_hint: str,
          start_text: str, end_text: str, budget: float, interests_list: List[str]):
     """
@@ -179,7 +175,7 @@ def plan(origin: str, destination: str, country_hint: str,
         Tuple[str, str, str, str, str, str, str, str]: Error, summary, overview,
         narrative, origin->location mapping, flights, hotels, daily plan.
     """
-    # Validate dates & budget
+    
     start_date = parse_date_flexible(start_text, country_hint or None)
     end_date = parse_date_flexible(end_text, country_hint or None)
     if not start_date or not end_date:
@@ -193,8 +189,6 @@ def plan(origin: str, destination: str, country_hint: str,
         return ("❌ Budget per night must be a non-negative number.", "", "", "", "", "", "", "")
     if end_date <= start_date:
         return ("❌ End date must be after start date.", "", "", "", "", "", "", "")
-
-    # Normalize & plan
     o = normalize_to_iata(origin)
     d = normalize_to_iata(destination, country_hint or None)
     interests = interests_list or []
@@ -205,7 +199,6 @@ def plan(origin: str, destination: str, country_hint: str,
     )
     it_json = it.model_dump(mode="json")
 
-    # Detailed summary (a little richer now)
     start_h = format_date_auto(start_date, country_hint)
     end_h   = format_date_auto(end_date, country_hint)
     days = (end_date - start_date).days
@@ -216,24 +209,18 @@ def plan(origin: str, destination: str, country_hint: str,
         f"- 📅 **{start_h} → {end_h}** • **{days} days / {nights} nights**\n"
         f"- 💵 Nightly budget: **${budget_val:.2f}** • Est. total: **${it_json.get('total_estimated_cost_usd','—')}**"
     )
-
-    # New richer overview panel
     overview = md_overview(it_json, start_date, end_date, budget_val, interests, country_hint)
 
-    # Sections
     narrative = _gemini_narrative(it_json, country_hint) if _gemini_enabled() else ""
     flights_md = md_flights(it_json)
     hotels_md  = md_hotels(it_json)
     days_md    = md_daily_plan(it_json, country_hint)
 
-    # New: Origin mapping textbox content (origin -> normalized location/code)
   
     origin_mapping_text = f"{o} to {d}"
 
-    # Return 8 components now (added origin mapping after narrative)
     return ("", summary, overview, narrative, origin_mapping_text, flights_md, hotels_md, days_md)
 
-# ---------- UI ----------
 with gr.Blocks(title="TripSmith — Multi-Agent Travel Planner") as demo:
     gr.Markdown("# TripSmith — Multi-Agent Travel Planner")
 
@@ -253,13 +240,11 @@ with gr.Blocks(title="TripSmith — Multi-Agent Travel Planner") as demo:
 
     run_btn = gr.Button("Plan Trip ✈️", variant="primary")
 
-    # Output panels
     error_md     = gr.Markdown()
     summary_md   = gr.Markdown()
-    overview_md  = gr.Markdown()   # richer overview
+    overview_md  = gr.Markdown()  
     narrative_md = gr.Markdown()
-    origin_map_tb = gr.Textbox(label="Origin → Location", interactive=False)  # NEW textbox after narrative
-    flights_md   = gr.Markdown()
+    origin_map_tb = gr.Textbox(label="Origin → Location", interactive=False)  
     hotels_md    = gr.Markdown()
     days_md      = gr.Markdown()
 
@@ -267,10 +252,9 @@ with gr.Blocks(title="TripSmith — Multi-Agent Travel Planner") as demo:
         plan,
         inputs=[origin, destination, country_hint, start_text, end_text, budget, interests],
         outputs=[error_md, summary_md, overview_md, narrative_md, origin_map_tb, flights_md, hotels_md, days_md],
-        show_progress=True,  # front-end spinner
+        show_progress=True,  
     )
 
-    # Global queue indicator + queuing behavior
     demo.queue()
 
 if __name__ == "__main__":

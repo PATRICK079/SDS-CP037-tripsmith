@@ -9,21 +9,18 @@ from typing import List, Optional
 import streamlit as st
 from dotenv import load_dotenv
 
-# Optional: Gemini (google-generativeai)
 GEMINI_AVAILABLE = False
-try:
-    import google.generativeai as genai  # pip install google-generativeai
+import google.generativeai as genai  
     GEMINI_AVAILABLE = True
 except Exception:
     GEMINI_AVAILABLE = False
 
 from controller.planner import Planner
 from utils.logging_config import setup_logging
-from utils.airports import normalize_to_iata  # uses full airports CSV
+from utils.airports import normalize_to_iata 
 
-# --- Optional (pretty date by country; we still accept ISO for APIs)
 try:
-    from babel.dates import format_date as _babel_format  # optional
+    from babel.dates import format_date as _babel_format  
 except Exception:
     _babel_format = None
 
@@ -44,34 +41,30 @@ INTEREST_CHOICES = [
     "outdoors", "family", "adventure", "music", "sports",
 ]
 
-# --- Env & logging
 load_dotenv(dotenv_path=os.path.join(os.getcwd(), ".env"), override=True)
 setup_logging()
 
-# Configure Gemini if key present
+
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 if GEMINI_AVAILABLE and GOOGLE_API_KEY:
     genai.configure(api_key=GOOGLE_API_KEY)
 
-# -----------------------------
-# Helpers
-# -----------------------------
+
 def format_trip_date(d: date, *, style: str = "AUTO_COUNTRY", country_hint: str | None = None) -> str:
     """Format a date for display; API calls still use ISO."""
     if not isinstance(d, date):
         return str(d)
-    if style == "MDY_LONG":   # October 10, 2025
+    if style == "MDY_LONG":   
         return d.strftime("%B %d, %Y")
-    if style == "DMY_LONG":   # 10 October 2025
+    if style == "DMY_LONG":   
         return d.strftime("%d %B %Y")
-    if style == "MDY_SLASH":  # 10/10/2025 (MM/DD/YYYY)
+    if style == "MDY_SLASH":  
         return d.strftime("%m/%d/%Y")
-    if style == "DMY_SLASH":  # 10/10/2025 (DD/MM/YYYY)
+    if style == "DMY_SLASH":  
         return d.strftime("%d/%m/%Y")
-    if style == "YMD_DASH":   # 2025-10-10
+    if style == "YMD_DASH":   
         return d.strftime("%Y-%m-%d")
 
-    # AUTO_COUNTRY → use Babel long format if available, else ISO
     if _babel_format and country_hint:
         loc = _COUNTRY_TO_LOCALE.get(country_hint.strip())
         if loc:
@@ -166,14 +159,11 @@ def gemini_narrative(itinerary_obj: dict, country_hint: Optional[str]) -> str:
     except Exception:
         return ""
 
-# -----------------------------
-# UI
-# -----------------------------
 st.set_page_config(page_title="TripSmith Planner", page_icon="✈️", layout="centered")
 st.title("TripSmith — Multi-Agent Travel Planner")
 
 with st.form("trip_form"):
-    # Inputs
+    
     col1, col2 = st.columns(2)
     with col1:
         origin = st.text_input("Origin (IATA or city)", value="ABV")
@@ -221,7 +211,6 @@ if submitted:
             interests=interests,
         )
 
-    # Summary (always Auto-by-country)
     sd = format_trip_date(it.start_date, style="AUTO_COUNTRY", country_hint=country_hint)
     ed = format_trip_date(it.end_date,   style="AUTO_COUNTRY", country_hint=country_hint)
     st.markdown(
@@ -230,7 +219,6 @@ if submitted:
         f"💵 **est. ${it.total_estimated_cost_usd}**"
     )
 
-    # Optional Gemini narrative
     if GEMINI_AVAILABLE and GOOGLE_API_KEY:
         with st.spinner("Generating travel brief…"):
             narrative = gemini_narrative(it.model_dump(mode='json'), country_hint)
@@ -238,7 +226,6 @@ if submitted:
             st.markdown("---")
             st.markdown(narrative)
 
-    # Flights, Hotels, Day-by-day sections
     it_json = it.model_dump(mode="json")
     st.markdown("---")
     st.markdown(md_flights(it_json))

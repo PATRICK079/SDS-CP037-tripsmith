@@ -51,7 +51,6 @@ def run_decentralized_demo() -> dict:
         accepted, why = negotiate_hotel_rate(it.hotels[0], 100.0)
         it.rationale += f" Hotel decision: {why}"
         if not accepted:
-            # Drop hotel and signal plan is incomplete
             it.hotels = []
             it.rationale += " (hotel removed; needs re-plan)."
 

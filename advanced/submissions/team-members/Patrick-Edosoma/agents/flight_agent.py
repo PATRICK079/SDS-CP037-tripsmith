@@ -3,9 +3,8 @@ from datetime import date
 from typing import Dict, Any
 from .base import Agent
 from models import FlightOption
-# Choose one: use real adapter if you wired it, else keep mock.
 from utils.search_providers import flight_search
-# from utils.search_providers import flight_search  # <- uncomment if you want real Amadeus
+
 
 class FlightAgent(Agent):
     """Agent responsible for flight discovery and normalization."""

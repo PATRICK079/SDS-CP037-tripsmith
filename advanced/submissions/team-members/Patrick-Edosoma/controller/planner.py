@@ -19,7 +19,6 @@ class Planner:
         self.hotel_agent = HotelAgent()
         self.poi_agent = POIAgent()
 
-    # ----------------- helpers -----------------
     def _dedupe_flights(self, flights: List[FlightOption]) -> List[FlightOption]:
         """Drop near-duplicates by (airline, rounded price, duration)."""
         seen: Set[Tuple[str, float, int]] = set()
@@ -39,13 +38,11 @@ class Planner:
         result: List[List[POI]] = []
         n = len(pois)
         for d in range(days):
-            # shift window each day
             start = (d * per_day) % n
             picks = [pois[(start + i) % n] for i in range(min(per_day, n))]
             result.append(picks)
         return result
 
-    # --------------- main entry ----------------
     def plan_trip(
         self,
         origin: str,
@@ -57,17 +54,15 @@ class Planner:
     ) -> Itinerary:
         """Produce a complete itinerary using centralized orchestration."""
 
-        # 1) Flights
         flights_payload = self.flight_agent.run(origin, destination, start_date, end_date)
         flights = [FlightOption(**f) for f in flights_payload.get("flights", [])]
         logger.info("Found %d flight options (raw)", len(flights))
 
         flights = self._dedupe_flights(flights)
         flights_sorted = sorted(flights, key=lambda x: (x.price_usd or 9e9, x.duration_minutes or 9e9))
-        flights_kept = flights_sorted[:5]  # keep multiple for user to choose from
+        flights_kept = flights_sorted[:5]
         logger.info("Keeping %d flight options (sorted)", len(flights_kept))
 
-        # 2) Hotels
         hotels_payload = self.hotel_agent.run(destination, start_date, end_date, budget_per_night)
         hotels = [HotelOption(**h) for h in hotels_payload.get("hotels", [])]
         logger.info("Found %d hotel options (raw)", len(hotels))
@@ -78,13 +73,10 @@ class Planner:
         )
         hotels_kept = hotels_sorted[:5]
         logger.info("Keeping %d hotel options (sorted)", len(hotels_kept))
-
-        # 3) POIs
         poi_payload = self.poi_agent.run(destination, interests)
         pois = [POI(**p) for p in poi_payload.get("pois", [])]
         logger.info("Found %d POIs", len(pois))
 
-        # 4) Daily plan (2 POIs/day + 4h free time), rotate POIs across days
         days = max((end_date - start_date).days, 0)
         daily: List[DayPlan] = []
         rotated = self._rotate_pois(pois, days=days, per_day=2)
@@ -93,7 +85,6 @@ class Planner:
             daily.append(DayPlan(date=cur, activities=rotated[idx], free_time_minutes=240))
             cur += timedelta(days=1)
 
-        # 5) Estimated cost: cheapest flight + cheapest hotel * nights + sum of POI estimates
         est_cost = 0.0
         if flights_kept:
             est_cost += float(flights_kept[0].price_usd or 0.0)
@@ -103,7 +94,6 @@ class Planner:
         est_cost += sum(float(p.price_estimate_usd or 0.0) for p in pois)
         est_cost = round(est_cost, 2)
 
-        # 6) Build itinerary: KEEP MULTIPLES
         it = Itinerary(
             origin=origin,
             destination=destination,

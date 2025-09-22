@@ -11,7 +11,6 @@ from dotenv import load_dotenv
 from models import FlightOption, HotelOption, POI
 from utils.airports import get_city_for_iata  
 
-# Ensure .env is read even for inline runs
 load_dotenv(dotenv_path=os.path.join(os.getcwd(), ".env"), override=True)
 
 logger = logging.getLogger(__name__)
@@ -37,9 +36,7 @@ def _google_flights_link(origin: str, dest: str, depart: date, ret: date,
         q += f" airline {airline}"
     return f"https://www.google.com/travel/flights?q={quote_plus(q)}"
 
-# -----------------------------
-# MOCK PROVIDERS (always safe)
-# -----------------------------
+
 
 def mock_flight_search(origin: str, destination: str, start: date, end: date) -> List[FlightOption]:
     """Return fake flight options for demo and testing."""
@@ -52,7 +49,7 @@ def mock_flight_search(origin: str, destination: str, start: date, end: date) ->
             airline="TS",
             price_usd=350.0,
             duration_minutes=420,
-            link="https://example.com/book/ts-001",
+        
         ),
         FlightOption(
             origin=origin,
@@ -62,7 +59,7 @@ def mock_flight_search(origin: str, destination: str, start: date, end: date) ->
             airline="TS",
             price_usd=430.0,
             duration_minutes=360,
-            link="https://example.com/book/ts-002",
+            
         ),
     ]
 
@@ -76,7 +73,6 @@ def mock_hotel_search(city: str, check_in: date, check_out: date, max_rate: floa
             check_out=check_out,
             nightly_rate_usd=min(max_rate, 120.0),
             rating=4.3,
-            link="https://example.com/h/central",
         ),
         HotelOption(
             name="Budget Stay",
@@ -84,7 +80,6 @@ def mock_hotel_search(city: str, check_in: date, check_out: date, max_rate: floa
             check_out=check_out,
             nightly_rate_usd=min(max_rate, 85.0),
             rating=3.9,
-            link="https://example.com/h/budget",
         ),
     ]
 
@@ -102,12 +97,7 @@ def mock_poi_search(city: str, interests: list[str]) -> List[POI]:
     return base
 
 
-# --------------------------------------------------
-# REAL PROVIDERS (optional) WITH SAFE FALLBACKS
-# --------------------------------------------------
-# If keys are missing or requests fail, we fall back to the mocks above.
 
-# ---- Tavily for POIs ----
 _TAVILY_URL = "https://api.tavily.com/search"
 
 def poi_search(city: str, interests: list[str]) -> List[POI]:
@@ -120,7 +110,6 @@ def poi_search(city: str, interests: list[str]) -> List[POI]:
         logger.info("poi_search: no TAVILY_API_KEY; falling back to mocks.")
         return mock_poi_search(city, interests)
 
-    # Expand IATA code -> "City, Country" (works whether 'city' is already a name or an IATA)
     human_city = get_city_for_iata(city)
 
     query = f"Top things to do in {human_city}: " + ", ".join(interests or ["sightseeing"])
@@ -148,8 +137,6 @@ def poi_search(city: str, interests: list[str]) -> List[POI]:
         logger.warning("poi_search error (%s); falling back to mocks.", e)
         return mock_poi_search(city, interests)
 
-
-# ---- Amadeus for Flights ----
 _AMADEUS_AUTH = "https://test.api.amadeus.com/v1/security/oauth2/token"
 _AMADEUS_FLIGHTS = "https://test.api.amadeus.com/v2/shopping/flight-offers"
 
@@ -222,10 +209,9 @@ def flight_search(origin: str, destination: str, start: date, end: date) -> List
         except Exception as e:
             logger.warning("flight_search Amadeus error (%s); will fall back to mocks.", e)
 
-    # If sandbox is sparse (like ABV->LOS), pad with mocks (deduped, not replacing real)
     if len(options) < 5:
         mocks = mock_flight_search(origin, destination, start, end)
-        # Make mock entries look distinct: nudge price/duration a bit if needed
+
         padded = []
         bump = 0
         for m in mocks:
@@ -235,8 +221,8 @@ def flight_search(origin: str, destination: str, start: date, end: date) -> List
                 depart_date=m.depart_date,
                 return_date=m.return_date,
                 airline=m.airline,
-                price_usd=float(m.price_usd) + bump,            # 350, 360, 370...
-                duration_minutes=int(m.duration_minutes) + bump % 30,  # vary a little
+                price_usd=float(m.price_usd) + bump,          
+                duration_minutes=int(m.duration_minutes) + bump % 30,  
                 link=_google_flights_link(origin, destination, start, end, currency="USD", airline=m.airline),
             )
             padded.append(bumped)
@@ -244,7 +230,7 @@ def flight_search(origin: str, destination: str, start: date, end: date) -> List
 
         options = _dedupe_flights_list(options + padded)
 
-    # Final sort & keep up to 5
+    
     options = sorted(options, key=lambda x: (x.price_usd or 9e9, x.duration_minutes or 9e9))[:5]
     return options
 
@@ -275,7 +261,7 @@ def hotel_search(city: str, check_in: date, check_out: date, max_rate: float) ->
         logger.info("hotel_search: no SERPAPI_API_KEY; falling back to mocks.")
         return mock_hotel_search(city, check_in, check_out, max_rate)
 
-    human_city = get_city_for_iata(city)  # handles IATA or plain city
+    human_city = get_city_for_iata(city)  
     try:
         params = {
             "engine": "google_hotels",
@@ -304,7 +290,6 @@ def hotel_search(city: str, check_in: date, check_out: date, max_rate: float) ->
             except Exception:
                 rating = 4.0
 
-            # ---- Price: structured first, then text fallback
             pn = None
             price_block = p.get("price_per_night") or {}
             if isinstance(price_block, dict):
@@ -316,21 +301,18 @@ def hotel_search(city: str, check_in: date, check_out: date, max_rate: float) ->
                     pn = total_rate.get("extracted")
 
             if pn is None:
-                # text fallback
+            
                 text_fields = [p.get("rate_per_night"), p.get("price"), p.get("description")]
                 val = next((t for t in text_fields if t), "")
                 if val:
                     pn = _parse_price(val, default=max_rate or 120.0)
 
-            # sanity: drop clearly bogus nightly prices
             if pn is None or float(pn) < 20.0 or float(pn) > 2000.0:
                 continue
 
-            # soft budget filter (25% leeway)
             if max_rate and float(pn) > max_rate * 1.25:
                 continue
 
-            # ---- Link: try several fields, else synthesize a Maps search URL
             link = (
                 p.get("link")
                 or p.get("booking_link")
@@ -356,8 +338,7 @@ def hotel_search(city: str, check_in: date, check_out: date, max_rate: float) ->
         if not hotels:
             logger.info("hotel_search: no properties parsed; falling back to mocks.")
             return mock_hotel_search(human_city, check_in, check_out, max_rate)
-
-        # Prefer cheap but decent (price asc, rating desc)
+            
         hotels.sort(key=lambda h: ((h.nightly_rate_usd or 9e9), -(h.rating or 0.0)))
         return hotels
 

@@ -6,12 +6,10 @@ from dotenv import load_dotenv
 from app.schemas import PlanRequest, PlanResponse
 from app.core import plan_trip_core
 
-# Load .env if present
 load_dotenv(override=True)
 
 app = FastAPI(title="TripSmith API", version="1.0.0")
 
-# CORS (allow your future web UI to call the API)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=os.getenv("CORS_ALLOW_ORIGINS", "*").split(","),

@@ -1,7 +1,7 @@
 from datetime import date, timedelta
 from typing import List, Dict, Any
-from controller.planner import Planner  # <- your existing
-from models import Itinerary  # <- your existing Pydantic models
+from controller.planner import Planner 
+from models import Itinerary  
 
 def plan_trip_core(origin: str, destination: str, start_date: date, end_date: date,
                    budget_per_night: float, interests: List[str]) -> Dict[str, Any]:
@@ -14,5 +14,5 @@ def plan_trip_core(origin: str, destination: str, start_date: date, end_date: da
         budget_per_night=budget_per_night,
         interests=interests,
     )
-    # Return plain dict (FastAPI will serialize it)
+    
     return it.model_dump()

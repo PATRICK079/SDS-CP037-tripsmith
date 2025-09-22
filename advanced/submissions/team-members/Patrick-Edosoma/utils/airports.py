@@ -1,12 +1,10 @@
-# utils/airports.py
+
 from __future__ import annotations
 import csv
 import os
 from typing import Dict, Tuple, Optional
 
-# OPTIONAL: pretty country names
-try:
-    import pycountry
+import pycountry
 
     def _country_name(alpha2: str) -> str:
         if not alpha2:
@@ -14,8 +12,7 @@ try:
         c = pycountry.countries.get(alpha_2=alpha2)
         return c.name if c else alpha2
 except Exception:
-    # Full fallback for ISO 3166-1 alpha-2 -> English country names.
-    # Includes commonly-used special case XK (Kosovo).
+
     _COUNTRY_OVERRIDES = {
         "AD": "Andorra",
         "AE": "United Arab Emirates",
@@ -346,7 +343,6 @@ def get_iata_for_city(city_or_code: str, country_hint: Optional[str] = None) -> 
         if code:
             return code
 
-    # fallback: first city match anywhere
     city_lower = v.lower()
     candidates = [k for k in _CITY_TO_IATA.keys() if k.startswith(city_lower + ", ")]
     if candidates:

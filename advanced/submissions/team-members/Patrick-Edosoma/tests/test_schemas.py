@@ -12,8 +12,6 @@ name="X", check_in=date(2025, 1, 10), check_out=date(2025, 1, 10), nightly_rate_
 )
 
 
-
-
 def test_itinerary_hotel_coverage():
 with pytest.raises(ValueError):
 Itinerary(
