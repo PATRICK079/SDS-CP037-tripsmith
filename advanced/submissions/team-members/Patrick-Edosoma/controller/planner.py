@@ -3,7 +3,7 @@ from datetime import date, timedelta
 from typing import List, Tuple, Set
 import logging
 
-from models import FlightOption, HotelOption, Itinerary, DayPlan, POI
+from ..models import FlightOption, HotelOption, Itinerary, DayPlan, POI
 from agents.flight_agent import FlightAgent
 from agents.hotel_agent import HotelAgent
 from agents.poi_agent import POIAgent
