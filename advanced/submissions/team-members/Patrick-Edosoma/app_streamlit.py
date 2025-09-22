@@ -7,7 +7,7 @@ from datetime import date, datetime
 from typing import List, Optional
 
 import streamlit as st
-import load_dotenv
+#import load_dotenv
 
 # Optional: Gemini (google-generativeai)
 GEMINI_AVAILABLE = False
