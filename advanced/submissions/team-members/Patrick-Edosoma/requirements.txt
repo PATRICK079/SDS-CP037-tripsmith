@@ -9,4 +9,3 @@ pandas==2.2.2
 tavily-python==0.7.12
 pycountry==24.6.1
 google-generativeai==0.8.3
-
